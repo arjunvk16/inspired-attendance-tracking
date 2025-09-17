@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Attendance Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -35,7 +36,7 @@
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6 md:p-8">
+    <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 md:p-8">
         <header class="text-center mb-6">
             <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Team Status Tracker</h1>
             <p class="text-slate-500 mt-1">Select a date to view or update the team's status.</p>
@@ -47,13 +48,14 @@
             <input type="date" id="date-picker" class="w-full flex-grow bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
         </div>
 
-        <!-- Employee List Container -->
+        <!-- Daily Status Editor -->
+        <h2 id="editor-heading" class="text-lg font-semibold text-slate-700 mb-3 hidden">Update Status for Selected Day</h2>
         <div id="employee-list-container" class="space-y-3">
             <!-- Loader will be shown here initially -->
         </div>
 
         <!-- Action Button and Status Message -->
-        <div class="mt-8 text-center">
+        <div class="my-8 text-center">
             <button id="save-button" class="w-full sm:w-auto inline-flex justify-center items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 transition-colors">
                 <span id="btn-text">Save Changes</span>
                 <span id="btn-loader" class="hidden">
@@ -62,13 +64,57 @@
             </button>
             <p id="status-message" class="mt-4 text-sm font-medium h-5"></p>
         </div>
+
+        <!-- Divider -->
+        <hr class="my-8">
+
+        <!-- Weekly Team Trend Chart -->
+        <div id="chart-container" class="my-8 hidden">
+             <canvas id="attendance-chart"></canvas>
+        </div>
+        
+        <!-- Weekly Member Summary Table -->
+        <div id="table-container" class="my-8 hidden">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3">Weekly Member Summary</h2>
+            <div class="border rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>
+                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">🏢 WFO</th>
+                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">🏠 WFH</th>
+                            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">🌴 Leave</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-table-body" class="bg-white divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Individual Monthly Report -->
+        <div id="individual-report-container" class="my-8 hidden">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3">Individual Monthly Report</h2>
+            <div class="flex items-center gap-4 mb-4">
+                <label for="employee-select" class="font-medium text-sm text-slate-600">Select Member:</label>
+                <select id="employee-select" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+            </div>
+            <div id="individual-calendar-container" class="hidden mt-4">
+                <div id="individual-monthly-summary" class="flex flex-wrap gap-x-6 gap-y-2 mb-4 text-sm"></div>
+                <div id="calendar-grid-header" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 mb-1">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div id="calendar-grid-body" class="grid grid-cols-7 gap-1">
+                    <!-- Calendar cells are dynamically generated -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Configuration ---
         const employees = [
@@ -77,42 +123,40 @@
         ];
         
         // --- Canvas Environment Variables ---
-        // These are provided by the hosting environment.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfigFromEnv = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 
         // --- DOM Elements ---
         const datePicker = document.getElementById('date-picker');
         const employeeListContainer = document.getElementById('employee-list-container');
+        const chartContainer = document.getElementById('chart-container');
+        const tableContainer = document.getElementById('table-container');
+        const summaryTableBody = document.getElementById('summary-table-body');
+        const editorHeading = document.getElementById('editor-heading');
         const saveButton = document.getElementById('save-button');
         const statusMessage = document.getElementById('status-message');
         const btnText = document.getElementById('btn-text');
         const btnLoader = document.getElementById('btn-loader');
+        const individualReportContainer = document.getElementById('individual-report-container');
+        const employeeSelect = document.getElementById('employee-select');
+        const individualCalendarContainer = document.getElementById('individual-calendar-container');
+        const monthlySummaryContainer = document.getElementById('individual-monthly-summary');
+        const calendarGridBody = document.getElementById('calendar-grid-body');
+
 
         let db;
+        let unsubscribe;
+        let attendanceChart;
 
         // --- Main Application Logic ---
         
-        /**
-         * Initializes Firebase and authenticates the user.
-         */
         async function initializeFirebase() {
-             const firebaseConfig = {
-                apiKey: "AIzaSyAJ9K9fQ0ThMB7aXB6qNHr3_yLUdqJgnCM",
-                authDomain: "my-chain-reaction-game.firebaseapp.com",
-                projectId: "my-chain-reaction-game",
-                storageBucket: "my-chain-reaction-game.appspot.com",
-                messagingSenderId: "32751418407",
-                appId: "1:32751418407:web:ff8244007ef2b099d56202",
-                measurementId: "G-D6ZRG8LK2H"
-              };
-
-            if (!firebaseConfig) {
-                console.error("Firebase configuration is missing.");
+            if (!firebaseConfigString) {
                 showError("Application is not configured correctly.");
                 return;
             }
+            const firebaseConfig = JSON.parse(firebaseConfigString);
 
             try {
                 const app = initializeApp(firebaseConfig);
@@ -120,133 +164,233 @@
                 const auth = getAuth(app);
                 setLogLevel('debug');
 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                console.log("Firebase initialized and user authenticated.");
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
                 
-                // Initial load after successful setup
+                populateEmployeeDropdown();
                 setupInitialDate();
-                await loadDataForDate(datePicker.value);
-
+                await handleDateChange(datePicker.value);
             } catch (error) {
                 console.error("Firebase initialization error:", error);
                 showError("Could not connect to the database.");
             }
         }
 
-        /**
-         * Formats a Date object into 'YYYY-MM-DD' string.
-         */
         const formatDate = (date) => date.toISOString().split('T')[0];
-
-        /**
-         * Sets the date picker to today's date.
-         */
-        function setupInitialDate() {
-            const today = new Date();
-            datePicker.value = formatDate(today);
+        
+        function populateEmployeeDropdown() {
+            employees.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                employeeSelect.appendChild(option);
+            });
         }
 
-        /**
-         * Renders the list of employees with their current status.
-         * @param {Object} attendanceData - Data from Firestore for the selected date.
-         */
-        function renderEmployees(attendanceData = {}) {
-            employeeListContainer.innerHTML = ''; // Clear previous list or loader
+        function setupInitialDate() {
+            datePicker.value = formatDate(new Date());
+        }
+
+        function renderEmployeeEditor(attendanceData = {}) {
+            employeeListContainer.innerHTML = ''; 
             employees.forEach(name => {
-                const currentStatus = attendanceData[name] || 'WFO'; // Default to 'Work from Office'
+                const currentStatus = attendanceData[name] || 'WFO';
                 const employeeDiv = document.createElement('div');
                 employeeDiv.className = 'flex items-center justify-between p-3 rounded-lg bg-slate-50 border';
-
-                employeeDiv.innerHTML = `
-                    <span class="font-medium text-slate-800">${name}</span>
+                employeeDiv.innerHTML = `<span class="font-medium text-slate-800">${name}</span>
                     <select class="status-select bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" data-employee-name="${name}">
                         <option value="WFO" ${currentStatus === 'WFO' ? 'selected' : ''}>🏢 Work from Office</option>
                         <option value="WFH" ${currentStatus === 'WFH' ? 'selected' : ''}>🏠 Work from Home</option>
                         <option value="Leave" ${currentStatus === 'Leave' ? 'selected' : ''}>🌴 On Leave</option>
-                    </select>
-                `;
+                    </select>`;
                 employeeListContainer.appendChild(employeeDiv);
             });
         }
         
-        /**
-         * Loads attendance data from Firestore for the selected date.
-         * @param {string} dateStr - The date in 'YYYY-MM-DD' format.
-         */
-        async function loadDataForDate(dateStr) {
-            if (!db || !dateStr) return;
-            
-            showLoadingState();
-            try {
-                // All data is public for this collaborative app
-                const docRef = doc(db, 'artifacts', appId, 'public/data/attendance', dateStr);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    renderEmployees(docSnap.data().statuses);
-                } else {
-                    renderEmployees(); // Render with default values
+        function renderWeeklySummaryTable(weeklyCounts) {
+            summaryTableBody.innerHTML = '';
+            employees.forEach(name => {
+                const counts = weeklyCounts[name] || { WFO: 0, WFH: 0, Leave: 0 };
+                const row = document.createElement('tr');
+                row.innerHTML = `<td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${name}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 text-center">${counts.WFO}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 text-center">${counts.WFH}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 text-center">${counts.Leave}</td>`;
+                summaryTableBody.appendChild(row);
+            });
+        }
+        
+        function updateWeeklyTrendChart(weeklyData) {
+            const ctx = document.getElementById('attendance-chart').getContext('2d');
+            if (attendanceChart) attendanceChart.destroy();
+            const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            attendanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'WFO', data: labels.map(day => weeklyData[day]?.WFO || 0), borderColor: '#6366F1', backgroundColor: 'rgba(99, 102, 241, 0.5)', fill: true, tension: 0.1 },
+                        { label: 'WFH', data: labels.map(day => weeklyData[day]?.WFH || 0), borderColor: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.5)', fill: true, tension: 0.1 },
+                        { label: 'Leave', data: labels.map(day => weeklyData[day]?.Leave || 0), borderColor: '#FB923C', backgroundColor: 'rgba(251, 146, 60, 0.5)', fill: true, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' }, title: { display: true, text: `Weekly Team Trend`, padding: { top: 10, bottom: 20 }, font: { size: 16, weight: '600' } } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 }
+            });
+        }
+
+        async function fetchWeeklyData(dateStr) {
+            const selectedDate = new Date(dateStr + 'T00:00:00');
+            const dayOfWeek = selectedDate.getDay();
+            const startDate = new Date(selectedDate);
+            startDate.setDate(selectedDate.getDate() - dayOfWeek);
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6);
+
+            const weeklyCounts = {};
+            employees.forEach(name => { weeklyCounts[name] = { WFO: 0, WFH: 0, Leave: 0 }; });
+            const weeklyTrendData = {};
+
+            try {
+                const collectionRef = collection(db, 'artifacts', appId, 'public/data/team_status');
+                const q = query(collectionRef, where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
+                const querySnapshot = await getDocs(q);
+
+                querySnapshot.forEach(doc => {
+                    const statuses = doc.data().statuses;
+                    const docDate = new Date(doc.id + 'T00:00:00');
+                    const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][docDate.getDay()];
+                    if(!weeklyTrendData[dayName]) weeklyTrendData[dayName] = { WFO: 0, WFH: 0, Leave: 0 };
+                    for (const name in statuses) {
+                        if (weeklyCounts[name] && statuses[name]) {
+                            weeklyCounts[name][statuses[name]]++;
+                            weeklyTrendData[dayName][statuses[name]]++;
+                        }
+                    }
+                });
+                renderWeeklySummaryTable(weeklyCounts);
+                updateWeeklyTrendChart(weeklyTrendData);
             } catch (error) {
-                console.error("Error getting document:", error);
-                showError("Failed to load data.");
-            } finally {
-                hideLoadingState();
+                console.error("Error fetching weekly summary:", error);
             }
         }
 
-        /**
-         * Saves the current state of attendance to Firestore.
-         */
+        async function fetchAndRenderIndividualMonthlyReport() {
+            const employeeName = employeeSelect.value;
+            const dateStr = datePicker.value;
+            if (!employeeName || !dateStr) return;
+
+            individualCalendarContainer.classList.remove('hidden');
+            const selectedDate = new Date(dateStr + 'T00:00:00');
+            const year = selectedDate.getFullYear();
+            const month = selectedDate.getMonth();
+            
+            const startDate = new Date(year, month, 1);
+            const endDate = new Date(year, month + 1, 0);
+            const daysInMonth = endDate.getDate();
+            const firstDayOfMonth = startDate.getDay();
+
+            const statusByDay = {};
+            const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0 };
+            
+            try {
+                const collectionRef = collection(db, 'artifacts', appId, 'public/data/team_status');
+                const q = query(collectionRef, where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
+                const querySnapshot = await getDocs(q);
+
+                querySnapshot.forEach(doc => {
+                    const statuses = doc.data().statuses;
+                    if (statuses && statuses[employeeName]) {
+                        const dayOfMonth = new Date(doc.id + 'T00:00:00').getDate();
+                        const status = statuses[employeeName];
+                        statusByDay[dayOfMonth] = status;
+                        if(monthlyCounts[status] !== undefined) monthlyCounts[status]++;
+                    }
+                });
+                
+                // Render summary
+                monthlySummaryContainer.innerHTML = `
+                    <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-indigo-500"></span>WFO: <strong class="ml-1">${monthlyCounts.WFO}</strong></div>
+                    <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-sky-500"></span>WFH: <strong class="ml-1">${monthlyCounts.WFH}</strong></div>
+                    <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-orange-400"></span>Leave: <strong class="ml-1">${monthlyCounts.Leave}</strong></div>`;
+
+                // Render calendar
+                calendarGridBody.innerHTML = '';
+                // Add empty cells for padding
+                for (let i = 0; i < firstDayOfMonth; i++) {
+                    calendarGridBody.insertAdjacentHTML('beforeend', '<div></div>');
+                }
+                // Add day cells
+                const colorClasses = { WFO: 'bg-indigo-500 text-white', WFH: 'bg-sky-500 text-white', Leave: 'bg-orange-400 text-white', NoData: 'bg-slate-100 text-slate-400' };
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const status = statusByDay[day] || 'NoData';
+                    const cellClass = colorClasses[status];
+                    calendarGridBody.insertAdjacentHTML('beforeend', `<div class="aspect-square flex items-center justify-center text-xs font-semibold rounded-md ${cellClass}">${day}</div>`);
+                }
+            } catch (error) {
+                console.error('Error fetching individual monthly data:', error);
+                calendarGridBody.innerHTML = '<p class="text-red-500 col-span-7">Could not load calendar data.</p>';
+            }
+        }
+
+        async function listenForDailyData(dateStr) {
+            if (unsubscribe) unsubscribe();
+            const docRef = doc(db, 'artifacts', appId, 'public/data/team_status', dateStr);
+            unsubscribe = onSnapshot(docRef, (docSnap) => {
+                renderEmployeeEditor(docSnap.exists() ? docSnap.data().statuses : {});
+                hideLoadingState();
+            });
+        }
+        
+        async function handleDateChange(dateStr) {
+             if (!db || !dateStr) return;
+             showLoadingState();
+             await Promise.all([
+                listenForDailyData(dateStr),
+                fetchWeeklyData(dateStr),
+                fetchAndRenderIndividualMonthlyReport()
+             ]);
+        }
+
         async function saveData() {
             const selectedDate = datePicker.value;
             if (!db || !selectedDate) return;
-
             setButtonLoading(true);
-
             const statuses = {};
             document.querySelectorAll('.status-select').forEach(select => {
-                const name = select.getAttribute('data-employee-name');
-                statuses[name] = select.value;
+                statuses[select.getAttribute('data-employee-name')] = select.value;
             });
-
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public/data/attendance', selectedDate);
+                const docRef = doc(db, 'artifacts', appId, 'public/data/team_status', selectedDate);
                 await setDoc(docRef, { statuses });
                 showSuccess("Changes saved successfully!");
+                await fetchWeeklyData(selectedDate);
+                await fetchAndRenderIndividualMonthlyReport();
             } catch (error) {
-                console.error("Error saving document: ", error);
                 showError("Failed to save changes.");
             } finally {
                 setButtonLoading(false);
             }
         }
 
-        // --- UI Helper Functions ---
-        
         function showLoadingState() {
             employeeListContainer.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
+            [chartContainer, tableContainer, editorHeading, individualReportContainer].forEach(el => el.classList.add('hidden'));
             saveButton.disabled = true;
         }
 
         function hideLoadingState() {
+            [chartContainer, tableContainer, editorHeading, individualReportContainer].forEach(el => el.classList.remove('hidden'));
             saveButton.disabled = false;
         }
 
         function setButtonLoading(isLoading) {
-            if (isLoading) {
-                btnText.classList.add('hidden');
-                btnLoader.classList.remove('hidden');
-                saveButton.disabled = true;
-            } else {
-                btnText.classList.remove('hidden');
-                btnLoader.classList.add('hidden');
-                saveButton.disabled = false;
-            }
+            btnText.classList.toggle('hidden', isLoading);
+            btnLoader.classList.toggle('hidden', !isLoading);
+            saveButton.disabled = isLoading;
         }
 
         function showSuccess(message) {
@@ -257,13 +401,14 @@
 
         function showError(message) {
             employeeListContainer.innerHTML = `<div class="text-center p-4 text-red-600 bg-red-100 rounded-lg">${message}</div>`;
+            [chartContainer, tableContainer, editorHeading].forEach(el => el.classList.add('hidden'));
             statusMessage.textContent = message;
             statusMessage.className = "mt-4 text-sm font-medium h-5 text-red-600";
         }
 
-
         // --- Event Listeners ---
-        datePicker.addEventListener('change', () => loadDataForDate(datePicker.value));
+        datePicker.addEventListener('change', () => handleDateChange(datePicker.value));
+        employeeSelect.addEventListener('change', fetchAndRenderIndividualMonthlyReport);
         saveButton.addEventListener('click', saveData);
         
         // --- Initialisation ---
@@ -272,3 +417,4 @@
     </script>
 </body>
 </html>
+
