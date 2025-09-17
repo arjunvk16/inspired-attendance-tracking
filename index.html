@@ -113,20 +113,25 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJ9K9fQ0ThMB7aXB6qNHr3_yLUdqJgnCM",
+            authDomain: "my-chain-reaction-game.firebaseapp.com",
+            projectId: "my-chain-reaction-game",
+            storageBucket: "my-chain-reaction-game.appspot.com",
+            messagingSenderId: "32751418407",
+            appId: "1:32751418407:web:ff8244007ef2b099d56202",
+            measurementId: "G-D6ZRG8LK2H"
+        };
+
         const employees = [
             "Akhil", "Arjun", "Arjun V K", "Chanthuraj", "Dayanitta",
             "Eby", "Rishil", "Shehmil", "Sumesh"
         ];
         
-        // --- Canvas Environment Variables ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-
         // --- DOM Elements ---
         const datePicker = document.getElementById('date-picker');
         const employeeListContainer = document.getElementById('employee-list-container');
@@ -152,20 +157,13 @@
         // --- Main Application Logic ---
         
         async function initializeFirebase() {
-            if (!firebaseConfigString) {
-                showError("Application is not configured correctly.");
-                return;
-            }
-            const firebaseConfig = JSON.parse(firebaseConfigString);
-
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 const auth = getAuth(app);
                 setLogLevel('debug');
 
-                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
-                else await signInAnonymously(auth);
+                await signInAnonymously(auth);
                 
                 populateEmployeeDropdown();
                 setupInitialDate();
@@ -255,7 +253,7 @@
             const weeklyTrendData = {};
 
             try {
-                const collectionRef = collection(db, 'artifacts', appId, 'public/data/team_status');
+                const collectionRef = collection(db, 'team_status');
                 const q = query(collectionRef, where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
                 const querySnapshot = await getDocs(q);
 
@@ -297,7 +295,7 @@
             const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0 };
             
             try {
-                const collectionRef = collection(db, 'artifacts', appId, 'public/data/team_status');
+                const collectionRef = collection(db, 'team_status');
                 const q = query(collectionRef, where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
                 const querySnapshot = await getDocs(q);
 
@@ -338,7 +336,7 @@
 
         async function listenForDailyData(dateStr) {
             if (unsubscribe) unsubscribe();
-            const docRef = doc(db, 'artifacts', appId, 'public/data/team_status', dateStr);
+            const docRef = doc(db, 'team_status', dateStr);
             unsubscribe = onSnapshot(docRef, (docSnap) => {
                 renderEmployeeEditor(docSnap.exists() ? docSnap.data().statuses : {});
                 hideLoadingState();
@@ -364,7 +362,7 @@
                 statuses[select.getAttribute('data-employee-name')] = select.value;
             });
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public/data/team_status', selectedDate);
+                const docRef = doc(db, 'team_status', selectedDate);
                 await setDoc(docRef, { statuses });
                 showSuccess("Changes saved successfully!");
                 await fetchWeeklyData(selectedDate);
