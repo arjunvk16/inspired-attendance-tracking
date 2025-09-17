@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Attendance Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Team Status Tracker</h1>
+            <p>Select a date to view or update the team's status.</p>
+        </header>
+        
+        <div class="date-selector">
+             <label for="date-picker">Date:</label>
+             <input type="date" id="date-picker">
+        </div>
+       
+        <div id="employee-list-container">
+            <div class="loader"></div>
+        </div>
+        
+        <button id="save-button">
+            <span class="btn-text">Save Changes</span>
+            <span class="btn-loader" style="display:none;"></span>
+        </button>
+        <p id="status-message"></p>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>
