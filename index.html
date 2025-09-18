@@ -71,21 +71,11 @@
         <!-- Weekly Member Summary Table -->
         <div id="table-container" class="my-8 hidden">
             <div class="flex justify-between items-center mb-3">
-                 <h2 class="text-lg font-semibold text-slate-700">Weekly Member Summary <span id="weekly-date-range" class="font-normal text-base text-slate-500 ml-2"></span></h2>
+                 <h2 class="text-lg font-semibold text-slate-700">Weekly Member Summary (Mon-Fri)</h2>
             </div>
-            <div id="week-selector" class="flex items-center gap-6 mb-4">
-                <div class="flex items-center">
-                    <input id="prev-week" type="radio" name="week-option" value="previous" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                    <label for="prev-week" class="ml-2 block text-sm font-medium text-gray-700">Previous Week</label>
-                </div>
-                <div class="flex items-center">
-                    <input id="current-week" type="radio" name="week-option" value="current" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" checked>
-                    <label for="current-week" class="ml-2 block text-sm font-medium text-gray-700">Current Week</label>
-                </div>
-                <div class="flex items-center">
-                    <input id="next-week" type="radio" name="week-option" value="next" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                    <label for="next-week" class="ml-2 block text-sm font-medium text-gray-700">Next Week</label>
-                </div>
+            <div id="week-selector-container" class="flex items-center gap-4 mb-4">
+                 <label for="month-week-selector" class="font-medium text-sm text-slate-600">Select Week:</label>
+                 <select id="month-week-selector" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
             </div>
             <div class="border rounded-lg overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200">
@@ -102,15 +92,18 @@
         <!-- Individual Monthly Report -->
         <div id="individual-report-container" class="my-8 hidden">
              <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
-                <h2 class="text-lg font-semibold text-slate-700">Individual Monthly Report</h2>
+                <h2 class="text-lg font-semibold text-slate-700">Monthly Report</h2>
                 <div class="flex items-center gap-4">
-                    <label for="employee-select" class="font-medium text-sm text-slate-600">Select Member:</label>
-                    <select id="employee-select" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
-                    <button id="download-excel-button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <button id="download-excel-button" class="inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                        Download as Excel
+                        <span id="download-btn-text">Download Team Report</span>
+                        <span id="download-btn-loader" class="hidden"><div class="btn-loader"></div></span>
                     </button>
                 </div>
+            </div>
+            <div class="flex items-center gap-4">
+                 <label for="employee-select" class="font-medium text-sm text-slate-600">View Individual Calendar:</label>
+                 <select id="employee-select" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
             </div>
             <div id="individual-calendar-container" class="hidden mt-4">
                 <div id="individual-monthly-summary" class="flex flex-wrap gap-x-6 gap-y-2 mb-4 text-sm"></div>
@@ -120,6 +113,23 @@
                 <div id="calendar-grid-body" class="grid grid-cols-7 gap-1">
                     <!-- Calendar cells are dynamically generated -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Monthly Eligibility Report -->
+        <div id="eligibility-report-container" class="my-8 hidden">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3">Monthly Eligibility Summary</h2>
+            <div class="border rounded-lg overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr id="eligibility-header">
+                            <!-- Header generated dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="eligibility-body" class="bg-white divide-y divide-slate-200">
+                        <!-- Body generated dynamically -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -150,7 +160,7 @@
         const datePicker = document.getElementById('date-picker');
         const employeeListContainer = document.getElementById('employee-list-container');
         const tableContainer = document.getElementById('table-container');
-        const weeklyDateRange = document.getElementById('weekly-date-range');
+        const monthWeekSelector = document.getElementById('month-week-selector');
         const weeklySummaryHeader = document.getElementById('weekly-summary-header');
         const summaryTableBody = document.getElementById('summary-table-body');
         const editorHeading = document.getElementById('editor-heading');
@@ -161,12 +171,18 @@
         const individualReportContainer = document.getElementById('individual-report-container');
         const employeeSelect = document.getElementById('employee-select');
         const downloadExcelButton = document.getElementById('download-excel-button');
+        const downloadBtnText = document.getElementById('download-btn-text');
+        const downloadBtnLoader = document.getElementById('download-btn-loader');
         const individualCalendarContainer = document.getElementById('individual-calendar-container');
         const monthlySummaryContainer = document.getElementById('individual-monthly-summary');
         const calendarGridBody = document.getElementById('calendar-grid-body');
+        const eligibilityReportContainer = document.getElementById('eligibility-report-container');
+        const eligibilityHeader = document.getElementById('eligibility-header');
+        const eligibilityBody = document.getElementById('eligibility-body');
 
         let db;
-        let unsubscribe;
+        let unsubscribeDaily;
+        let unsubscribeWeekly;
 
         // --- Main Application Logic ---
         
@@ -201,6 +217,46 @@
         function setupInitialDate() {
             datePicker.value = formatDate(new Date());
         }
+        
+        function getWeekStartDate(date) {
+            const newDate = new Date(date);
+            const day = newDate.getDay();
+            const diff = newDate.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(newDate.setDate(diff));
+        }
+
+        function populateWeekSelector(dateStr) {
+            const selectedDate = new Date(dateStr + 'T00:00:00');
+            const year = selectedDate.getFullYear();
+            const month = selectedDate.getMonth();
+
+            monthWeekSelector.innerHTML = '';
+            let weekStartDate = getWeekStartDate(new Date(year, month, 1));
+            
+            for (let i = 0; i < 6; i++) {
+                const weekEndDate = new Date(weekStartDate);
+                weekEndDate.setDate(weekStartDate.getDate() + 6);
+
+                if ((weekStartDate.getMonth() === month && weekStartDate.getFullYear() === year) || 
+                    (weekEndDate.getMonth() === month && weekEndDate.getFullYear() === year)) {
+                    
+                    const option = document.createElement('option');
+                    option.value = formatDate(weekStartDate);
+                    option.textContent = `${formatDisplayDate(weekStartDate)} - ${formatDisplayDate(weekEndDate)}`;
+                    monthWeekSelector.appendChild(option);
+                
+                    if (selectedDate >= weekStartDate && selectedDate <= weekEndDate) {
+                        option.selected = true;
+                    }
+                }
+
+                weekStartDate.setDate(weekStartDate.getDate() + 7);
+                
+                if (weekStartDate.getMonth() > month && weekStartDate.getFullYear() >= year) break;
+                if (weekStartDate.getFullYear() > year) break;
+            }
+        }
+
 
         function renderEmployeeEditor(attendanceData = {}) {
             employeeListContainer.innerHTML = ''; 
@@ -229,9 +285,8 @@
         };
         
         function renderWeeklySummaryTable(weeklyData, startDate) {
-            // Render Header
-            let headerHTML = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>`;
-            for (let i = 0; i < 7; i++) {
+            let headerHTML = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50">Member</th>`;
+            for (let i = 0; i < 5; i++) {
                 const day = new Date(startDate);
                 day.setDate(startDate.getDate() + i);
                 headerHTML += `<th scope="col" class="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">${day.toLocaleDateString('en-US', { weekday: 'short' })}<br>${day.getDate()}</th>`;
@@ -241,7 +296,6 @@
                            <th scope="col" class="px-2 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Leave</th>`;
             weeklySummaryHeader.innerHTML = headerHTML;
             
-            // Render Body
             summaryTableBody.innerHTML = '';
             employees.forEach(name => {
                 const employeeData = weeklyData[name] || { days: {}, totals: { WFO: 0, WFH: 0, Leave: 0 }, wfoWorkingDays: 0 };
@@ -249,8 +303,8 @@
                 const row = document.createElement('tr');
                 row.className = highlightClass;
 
-                let rowHTML = `<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">${name}</td>`;
-                for (let i = 0; i < 7; i++) { // 0=Sun, 1=Mon...
+                let rowHTML = `<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-0 bg-white ${highlightClass ? 'bg-green-50' : ''}">${name}</td>`;
+                for (let i = 1; i <= 5; i++) {
                     const status = employeeData.days[i] || '--';
                     rowHTML += `<td class="px-2 py-3 whitespace-nowrap text-sm text-center">${statusBadge(status)}</td>`;
                 }
@@ -261,87 +315,146 @@
                 summaryTableBody.appendChild(row);
             });
         }
-
-        function getWeekRangeForDate(dateStr, mode = 'current') {
-            const selectedDate = new Date(dateStr + 'T00:00:00');
-            const dayOfWeek = selectedDate.getDay(); // Sunday = 0
-            const startDate = new Date(selectedDate);
-            startDate.setDate(selectedDate.getDate() - dayOfWeek); // Go back to Sunday
-            if (mode === 'previous') startDate.setDate(startDate.getDate() - 7);
-            else if (mode === 'next') startDate.setDate(startDate.getDate() + 7);
-            const endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 6);
-            return { startDate, endDate };
-        }
         
-        async function fetchWeeklyData(startDate, endDate) {
-            weeklyDateRange.textContent = `[${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}]`;
-            const weeklyData = {};
-            employees.forEach(name => { 
-                weeklyData[name] = { days: {}, totals: { WFO: 0, WFH: 0, Leave: 0 }, wfoWorkingDays: 0 }; 
-            });
+        function listenForWeeklyData(startDateStr) {
+            if (unsubscribeWeekly) unsubscribeWeekly();
 
-            try {
-                const q = query(collection(db, 'team_status'), where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
-                const querySnapshot = await getDocs(q);
+            const startDate = new Date(startDateStr + 'T00:00:00');
+            const fullWeekEndDate = new Date(startDate);
+            fullWeekEndDate.setDate(startDate.getDate() + 4);
+
+            const q = query(collection(db, 'team_status'), where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(fullWeekEndDate)));
+            
+            unsubscribeWeekly = onSnapshot(q, (querySnapshot) => {
+                const weeklyData = {};
+                employees.forEach(name => { 
+                    weeklyData[name] = { days: {}, totals: { WFO: 0, WFH: 0, Leave: 0 }, wfoWorkingDays: 0 }; 
+                });
 
                 querySnapshot.forEach(doc => {
                     const statuses = doc.data().statuses;
                     const docDate = new Date(doc.id + 'T00:00:00');
                     const docDayOfWeek = docDate.getDay();
                     for (const name in statuses) {
-                        if (weeklyData[name] && statuses[name]) {
+                        if (weeklyData[name] && statuses[name] && docDayOfWeek >= 1 && docDayOfWeek <= 5) {
                             const status = statuses[name];
                             weeklyData[name].days[docDayOfWeek] = status;
                             weeklyData[name].totals[status]++;
-                            if (docDayOfWeek >= 1 && docDayOfWeek <= 5 && status === 'WFO') {
+                            if (status === 'WFO') {
                                 weeklyData[name].wfoWorkingDays++;
                             }
                         }
                     }
                 });
                 renderWeeklySummaryTable(weeklyData, startDate);
-            } catch (error) {
-                console.error("Error fetching weekly summary:", error);
-            }
+            }, (error) => {
+                console.error("Error listening to weekly summary:", error);
+            });
         }
 
-        async function fetchIndividualMonthlyData(employeeName, dateStr) {
-            const selectedDate = new Date(dateStr + 'T00:00:00');
+
+        async function fetchAllMonthlyData(dateStr) {
+             const selectedDate = new Date(dateStr + 'T00:00:00');
             const year = selectedDate.getFullYear();
             const month = selectedDate.getMonth();
             const startDate = new Date(year, month, 1);
             const endDate = new Date(year, month + 1, 0);
-
-            const statusByDay = {};
-            const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0 };
-
+            
+            const monthlyData = {};
             try {
                 const q = query(collection(db, 'team_status'), where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
                 const querySnapshot = await getDocs(q);
                 querySnapshot.forEach(doc => {
-                    const statuses = doc.data().statuses;
-                    if (statuses && statuses[employeeName]) {
-                        const dayOfMonth = new Date(doc.id + 'T00:00:00').getDate();
-                        const status = statuses[employeeName];
-                        statusByDay[dayOfMonth] = status;
-                        if(monthlyCounts[status] !== undefined) monthlyCounts[status]++;
-                    }
+                    monthlyData[doc.id] = doc.data().statuses;
                 });
-                return { statusByDay, monthlyCounts, startDate };
+                return monthlyData;
             } catch (error) {
-                console.error('Error fetching individual monthly data:', error);
-                return null;
+                console.error("Error fetching all monthly data:", error);
+                return {};
             }
         }
 
-        async function renderIndividualMonthlyReport() {
+        async function renderMonthlyEligibilityReport(dateStr, allMonthlyData) {
+            const selectedDate = new Date(dateStr + 'T00:00:00');
+            const year = selectedDate.getFullYear();
+            const month = selectedDate.getMonth();
+
+            const weeksOfMonth = [];
+            let weekStart = getWeekStartDate(new Date(year, month, 1));
+            while (weekStart.getMonth() <= month) {
+                 if(weekStart.getFullYear() === year) weeksOfMonth.push(new Date(weekStart));
+                 weekStart.setDate(weekStart.getDate() + 7);
+            }
+            
+            let headerContent = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>`;
+            weeksOfMonth.forEach((week, index) => {
+                headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Week ${index + 1}</th>`;
+            });
+            headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Total Eligible Weeks</th>`;
+            eligibilityHeader.innerHTML = headerContent;
+
+            const eligibilityData = {};
+            employees.forEach(name => {
+                let totalEligibleWeeks = 0;
+                const weeklyEligibility = weeksOfMonth.map(weekStart => {
+                    let wfoCount = 0;
+                    for (let i = 0; i < 5; i++) {
+                        const day = new Date(weekStart);
+                        day.setDate(weekStart.getDate() + i);
+                        const dayStr = formatDate(day);
+                        if (allMonthlyData[dayStr] && allMonthlyData[dayStr][name] === 'WFO') {
+                            wfoCount++;
+                        }
+                    }
+                    if (wfoCount >= 4) {
+                        totalEligibleWeeks++;
+                        return '✓';
+                    }
+                    return '✗';
+                });
+                eligibilityData[name] = { weeklyEligibility, totalEligibleWeeks };
+            });
+
+            eligibilityBody.innerHTML = '';
+            employees.forEach(name => {
+                const data = eligibilityData[name];
+                let rowContent = `<td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${name}</td>`;
+                data.weeklyEligibility.forEach(status => {
+                    const textColor = status === '✓' ? 'text-green-600' : 'text-red-500';
+                    rowContent += `<td class="px-4 py-4 whitespace-nowrap text-sm text-center font-semibold ${textColor}">${status}</td>`;
+                });
+                rowContent += `<td class="px-4 py-4 whitespace-nowrap text-sm text-center font-bold text-slate-800">${data.totalEligibleWeeks}</td>`;
+                eligibilityBody.innerHTML += `<tr>${rowContent}</tr>`;
+            });
+        }
+
+
+        async function fetchIndividualMonthlyData(employeeName, allMonthlyData, dateStr) {
+            const selectedDate = new Date(dateStr + 'T00:00:00');
+            const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+
+            const statusByDay = {};
+            const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0 };
+
+            for(const dateKey in allMonthlyData) {
+                const statuses = allMonthlyData[dateKey];
+                if(statuses && statuses[employeeName]) {
+                    const dayOfMonth = new Date(dateKey + 'T00:00:00').getDate();
+                    const status = statuses[employeeName];
+                    statusByDay[dayOfMonth] = status;
+                    if(monthlyCounts[status] !== undefined) monthlyCounts[status]++;
+                }
+            }
+            return { statusByDay, monthlyCounts, startDate };
+        }
+
+        async function renderIndividualMonthlyReport(allMonthlyData) {
             const employeeName = employeeSelect.value;
             const dateStr = datePicker.value;
             if (!employeeName || !dateStr) return;
 
             individualCalendarContainer.classList.remove('hidden');
-            const monthlyData = await fetchIndividualMonthlyData(employeeName, dateStr);
+            const monthlyData = await fetchIndividualMonthlyData(employeeName, allMonthlyData, dateStr);
             if (!monthlyData) {
                  calendarGridBody.innerHTML = '<p class="text-red-500 col-span-7">Could not load calendar data.</p>';
                  return;
@@ -367,38 +480,50 @@
             }
         }
         
-        async function downloadMonthlyReportAsExcel() {
-            const employeeName = employeeSelect.value;
+        async function downloadTeamMonthlyReportAsExcel() {
+            setDownloadButtonLoading(true);
             const dateStr = datePicker.value;
-            const monthlyData = await fetchIndividualMonthlyData(employeeName, dateStr);
-            if(!monthlyData) return alert('Could not fetch data to export.');
-            
-            const { statusByDay, startDate } = monthlyData;
-            const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-
-            const excelData = [
-                ['Date', 'Day', 'Status']
-            ];
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), day);
-                const dateString = currentDate.toISOString().split('T')[0];
-                const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-                const status = statusByDay[day] || 'No Data';
-                excelData.push([dateString, dayName, status]);
-            }
-
-            const worksheet = XLSX.utils.aoa_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Monthly Report');
-            const monthName = startDate.toLocaleDateString('en-US', { month: 'long' });
-            XLSX.writeFile(workbook, `Monthly_Report_${employeeName}_${monthName}_${startDate.getFullYear()}.xlsx`);
+
+            const allMonthlyData = await fetchAllMonthlyData(dateStr);
+
+            const allEmployeeDataPromises = employees.map(name => fetchIndividualMonthlyData(name, allMonthlyData, dateStr));
+            const allEmployeeData = await Promise.all(allEmployeeDataPromises);
+
+            let monthName, year;
+
+            allEmployeeData.forEach((monthlyData, index) => {
+                if (!monthlyData) return;
+                
+                const employeeName = employees[index];
+                const { statusByDay, startDate } = monthlyData;
+                const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+                
+                if(!monthName) {
+                    monthName = startDate.toLocaleDateString('en-US', { month: 'long' });
+                    year = startDate.getFullYear();
+                }
+
+                const excelData = [['Date', 'Day', 'Status']];
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const currentDate = new Date(year, startDate.getMonth(), day);
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+                    const status = statusByDay[day] || 'No Data';
+                    excelData.push([dateString, dayName, status]);
+                }
+                const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, employeeName);
+            });
+
+            XLSX.writeFile(workbook, `Team_Monthly_Report_${monthName}_${year}.xlsx`);
+            setDownloadButtonLoading(false);
         }
 
         async function listenForDailyData(dateStr) {
-            if (unsubscribe) unsubscribe();
+            if (unsubscribeDaily) unsubscribeDaily();
             const docRef = doc(db, 'team_status', dateStr);
-            unsubscribe = onSnapshot(docRef, (docSnap) => {
+            unsubscribeDaily = onSnapshot(docRef, (docSnap) => {
                 renderEmployeeEditor(docSnap.exists() ? docSnap.data().statuses : {});
                 hideLoadingState();
             });
@@ -407,12 +532,16 @@
         async function handleDateChange(dateStr) {
             if (!db || !dateStr) return;
             showLoadingState();
-            document.getElementById('current-week').checked = true;
-            const { startDate, endDate } = getWeekRangeForDate(dateStr, 'current');
+            populateWeekSelector(dateStr);
+            const selectedWeekStartDate = monthWeekSelector.value;
+            listenForWeeklyData(selectedWeekStartDate);
+            
+            const allMonthlyData = await fetchAllMonthlyData(dateStr);
+            
             await Promise.all([
                 listenForDailyData(dateStr),
-                fetchWeeklyData(startDate, endDate),
-                renderIndividualMonthlyReport()
+                renderIndividualMonthlyReport(allMonthlyData),
+                renderMonthlyEligibilityReport(dateStr, allMonthlyData)
             ]);
         }
 
@@ -427,10 +556,10 @@
             try {
                 await setDoc(doc(db, 'team_status', selectedDate), { statuses });
                 showSuccess("Changes saved successfully!");
-                const selectedMode = document.querySelector('input[name="week-option"]:checked').value;
-                const { startDate, endDate } = getWeekRangeForDate(selectedDate, selectedMode);
-                await fetchWeeklyData(startDate, endDate);
-                await renderIndividualMonthlyReport();
+                // The weekly listener will update automatically. We only need to refresh monthly reports.
+                const allMonthlyData = await fetchAllMonthlyData(selectedDate);
+                await renderIndividualMonthlyReport(allMonthlyData);
+                await renderMonthlyEligibilityReport(selectedDate, allMonthlyData);
             } catch (error) {
                 showError("Failed to save changes.");
             } finally {
@@ -440,12 +569,12 @@
 
         function showLoadingState() {
             employeeListContainer.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
-            [tableContainer, editorHeading, individualReportContainer].forEach(el => el.classList.add('hidden'));
+            [tableContainer, editorHeading, individualReportContainer, eligibilityReportContainer].forEach(el => el.classList.add('hidden'));
             saveButton.disabled = true;
         }
 
         function hideLoadingState() {
-            [tableContainer, editorHeading, individualReportContainer].forEach(el => el.classList.remove('hidden'));
+            [tableContainer, editorHeading, individualReportContainer, eligibilityReportContainer].forEach(el => el.classList.remove('hidden'));
             saveButton.disabled = false;
         }
 
@@ -453,6 +582,12 @@
             btnText.classList.toggle('hidden', isLoading);
             btnLoader.classList.toggle('hidden', !isLoading);
             saveButton.disabled = isLoading;
+        }
+        
+        function setDownloadButtonLoading(isLoading) {
+            downloadBtnText.classList.toggle('hidden', isLoading);
+            downloadBtnLoader.classList.toggle('hidden', !isLoading);
+            downloadExcelButton.disabled = isLoading;
         }
 
         function showSuccess(message) {
@@ -470,16 +605,13 @@
 
         // --- Event Listeners ---
         datePicker.addEventListener('change', () => handleDateChange(datePicker.value));
-        employeeSelect.addEventListener('change', renderIndividualMonthlyReport);
-        downloadExcelButton.addEventListener('click', downloadMonthlyReportAsExcel);
-        saveButton.addEventListener('click', saveData);
-        document.querySelectorAll('input[name="week-option"]').forEach(radio => {
-            radio.addEventListener('change', async () => {
-                const selectedMode = radio.value;
-                const { startDate, endDate } = getWeekRangeForDate(datePicker.value, selectedMode);
-                await fetchWeeklyData(startDate, endDate);
-            });
+        employeeSelect.addEventListener('change', async () => {
+             const allMonthlyData = await fetchAllMonthlyData(datePicker.value);
+             renderIndividualMonthlyReport(allMonthlyData);
         });
+        downloadExcelButton.addEventListener('click', downloadTeamMonthlyReportAsExcel);
+        monthWeekSelector.addEventListener('change', () => listenForWeeklyData(monthWeekSelector.value));
+        saveButton.addEventListener('click', saveData);
         
         // --- Initialisation ---
         initializeFirebase();
