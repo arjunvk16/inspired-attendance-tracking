@@ -36,10 +36,36 @@
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-7xl bg-white rounded-xl shadow-lg p-6 md:p-8">
-        <header class="text-center mb-6">
+    <!-- Login Container -->
+    <div id="login-container" class="w-full max-w-md hidden">
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-center text-slate-800 mb-2">Admin Login</h2>
+            <p class="text-center text-slate-500 mb-6">Please sign in to continue.</p>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                    <input type="email" id="username" name="username" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5" placeholder="Enter your email" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                    <input type="password" id="password" name="password" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Login
+                </button>
+                <p id="login-error" class="mt-4 text-sm text-center font-medium h-5 text-red-600"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container (Initially Hidden) -->
+    <div id="app-container" class="w-full max-w-7xl bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
+        <header class="relative text-center mb-6">
             <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Team Status Tracker</h1>
             <p class="text-slate-500 mt-1">Select a date to view or update the team's status.</p>
+            <button id="logout-button" class="absolute top-0 right-0 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                Logout
+            </button>
         </header>
 
         <!-- Date Selector -->
@@ -116,7 +142,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, setLogLevel, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Configuration ---
@@ -136,6 +162,14 @@
         ];
         
         // --- DOM Elements ---
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const logoutButton = document.getElementById('logout-button');
+
         const datePicker = document.getElementById('date-picker');
         const employeeListContainer = document.getElementById('employee-list-container');
         const editorHeading = document.getElementById('editor-heading');
@@ -156,29 +190,77 @@
         const eligibilityBody = document.getElementById('eligibility-body');
 
         let db;
+        let auth;
         let unsubscribeDaily;
+        let isAppInitialized = false;
 
-        // --- Main Application Logic ---
-        
-        async function initializeFirebase() {
+        // --- Main App Initialization ---
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        setLogLevel('debug');
+
+        // --- Auth State Logic ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                if (!isAppInitialized) {
+                    initializeAppLogic();
+                    isAppInitialized = true;
+                }
+            } else {
+                // User is signed out
+                appContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+                isAppInitialized = false; // Reset for next login
+            }
+        });
+
+        // --- Login/Logout Logic ---
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = usernameInput.value;
+            const password = passwordInput.value;
+            loginError.textContent = '';
+            
             try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                const auth = getAuth(app);
-                setLogLevel('debug');
-                await signInAnonymously(auth);
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged will handle UI changes
+            } catch (error) {
+                console.error("Login Error:", error.code, error.message);
+                loginError.textContent = 'Invalid email or password.';
+                setTimeout(() => { loginError.textContent = '' }, 3000);
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await signOut(auth);
+                // onAuthStateChanged will handle UI changes
+            } catch (error) {
+                console.error("Logout Error:", error);
+            }
+        }
+        
+        // --- Core Application Logic (runs after login) ---
+        async function initializeAppLogic() {
+            try {
                 populateEmployeeDropdown();
                 setupInitialDate();
                 await handleDateChange(datePicker.value);
             } catch (error) {
-                console.error("Firebase initialization error:", error);
-                showError("Could not connect to the database.");
+                console.error("App initialization error:", error);
+                showError("Could not load application data.");
             }
         }
 
         const formatDate = (date) => date.toISOString().split('T')[0];
         
         function populateEmployeeDropdown() {
+            // Clear existing options before populating
+            employeeSelect.innerHTML = '';
             employees.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;
@@ -194,6 +276,7 @@
         function getWeekStartDate(date) {
             const newDate = new Date(date);
             const day = newDate.getDay();
+            // Adjust to Monday as the start of the week
             const diff = newDate.getDate() - day + (day === 0 ? -6 : 1);
             return new Date(newDate.setDate(diff));
         }
@@ -259,7 +342,7 @@
                 let totalEligibleWeeks = 0;
                 const weeklyEligibility = weeksOfMonth.map(weekStart => {
                     let wfoCount = 0;
-                    for (let i = 0; i < 5; i++) {
+                    for (let i = 0; i < 5; i++) { // Monday to Friday
                         const day = new Date(weekStart);
                         day.setDate(weekStart.getDate() + i);
                         const dayStr = formatDate(day);
@@ -460,6 +543,8 @@
         }
 
         // --- Event Listeners ---
+        loginForm.addEventListener('submit', handleLogin);
+        logoutButton.addEventListener('click', handleLogout);
         datePicker.addEventListener('change', () => handleDateChange(datePicker.value));
         employeeSelect.addEventListener('change', async () => {
              const allMonthlyData = await fetchAllMonthlyData(datePicker.value);
@@ -467,9 +552,6 @@
         });
         downloadExcelButton.addEventListener('click', downloadTeamMonthlyReportAsExcel);
         saveButton.addEventListener('click', saveData);
-        
-        // --- Initialisation ---
-        initializeFirebase();
 
     </script>
 </body>
