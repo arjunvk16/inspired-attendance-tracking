@@ -338,24 +338,43 @@
             eligibilityHeader.innerHTML = headerContent;
 
             const eligibilityData = {};
+            // For each employee, calculate their weekly eligibility for the month.
             employees.forEach(name => {
                 let totalEligibleWeeks = 0;
+                
+                // Map over each week of the month to determine if it was an "eligible" week.
                 const weeklyEligibility = weeksOfMonth.map(weekStart => {
+                    // This is the counter for "Work From Office" days in a single week.
                     let wfoCount = 0;
-                    for (let i = 0; i < 5; i++) { // Monday to Friday
+
+                    // --- ELIGIBILITY LOGIC ---
+                    // Loop through the 5 working days of the week (Monday to Friday).
+                    // i=0 is Monday, i=1 is Tuesday, ..., i=4 is Friday. This ignores Saturday and Sunday.
+                    for (let i = 0; i < 5; i++) {
                         const day = new Date(weekStart);
                         day.setDate(weekStart.getDate() + i);
                         const dayStr = formatDate(day);
+
+                        // Check the stored data for the current day.
+                        // If the status for the employee on this day is 'WFO'...
                         if (allMonthlyData[dayStr] && allMonthlyData[dayStr][name] === 'WFO') {
+                            // ...increment the counter.
                             wfoCount++;
                         }
                     }
+
+                    // After checking all 5 days, see if the employee met the criteria.
+                    // The requirement is to be in the office for at least 4 days.
                     if (wfoCount >= 4) {
-                        totalEligibleWeeks++;
-                        return '✓';
+                        totalEligibleWeeks++; // Increment the total eligible weeks for the month.
+                        return '✓'; // Mark this week as eligible (check mark).
                     }
-                    return '✗';
+                    
+                    // If the count is less than 4, the week is not eligible.
+                    return '✗'; // Mark this week as not eligible (cross mark).
                 });
+
+                // Store the results for the employee.
                 eligibilityData[name] = { weeklyEligibility, totalEligibleWeeks };
             });
 
@@ -556,4 +575,3 @@
     </script>
 </body>
 </html>
-
