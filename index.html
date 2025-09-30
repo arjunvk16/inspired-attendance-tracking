@@ -281,6 +281,15 @@
             return new Date(newDate.setDate(diff));
         }
 
+        // Helper function to get the week number of the year
+        function getWeekOfYear(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return weekNo;
+        }
+
         function renderEmployeeEditor(attendanceData = {}) {
             employeeListContainer.innerHTML = ''; 
             employees.forEach(name => {
@@ -292,6 +301,7 @@
                         <option value="WFO" ${currentStatus === 'WFO' ? 'selected' : ''}>🏢 Work from Office</option>
                         <option value="WFH" ${currentStatus === 'WFH' ? 'selected' : ''}>🏠 Work from Home</option>
                         <option value="Leave" ${currentStatus === 'Leave' ? 'selected' : ''}>🌴 On Leave</option>
+                        <option value="Holiday" ${currentStatus === 'Holiday' ? 'selected' : ''}>🏖️ Holiday</option>
                     </select>`;
                 employeeListContainer.appendChild(employeeDiv);
             });
@@ -323,58 +333,57 @@
             const year = selectedDate.getFullYear();
             const month = selectedDate.getMonth();
 
-            const weeksOfMonth = [];
-            let weekStart = getWeekStartDate(new Date(year, month, 1));
-            while (weekStart.getMonth() <= month) {
-                 if(weekStart.getFullYear() === year) weeksOfMonth.push(new Date(weekStart));
-                 weekStart.setDate(weekStart.getDate() + 7);
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+
+            const startMonday = getWeekStartDate(firstDayOfMonth);
+            const endMonday = getWeekStartDate(lastDayOfMonth);
+            
+            const weeksForReport = [];
+            let currentMonday = new Date(startMonday);
+            while (currentMonday <= endMonday) {
+                weeksForReport.push(new Date(currentMonday));
+                currentMonday.setDate(currentMonday.getDate() + 7);
             }
             
+            const formatWeekRange = (monday) => {
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                const monthFormat = { month: 'short' };
+                const dayFormat = { day: '2-digit' };
+                const start = `${monday.toLocaleDateString('en-US', monthFormat)} ${monday.toLocaleDateString('en-US', dayFormat)}`;
+                const end = `${sunday.toLocaleDateString('en-US', monthFormat)} ${sunday.toLocaleDateString('en-US', dayFormat)}`;
+                return `${start} - ${end}`;
+            };
+
             let headerContent = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>`;
-            weeksOfMonth.forEach((week, index) => {
-                headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Week ${index + 1}</th>`;
+            weeksForReport.forEach(week => {
+                headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    W${getWeekOfYear(week)} <br> <span class="font-normal normal-case">${formatWeekRange(week)}</span>
+                </th>`;
             });
             headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Total Eligible Weeks</th>`;
             eligibilityHeader.innerHTML = headerContent;
 
             const eligibilityData = {};
-            // For each employee, calculate their weekly eligibility for the month.
             employees.forEach(name => {
                 let totalEligibleWeeks = 0;
-                
-                // Map over each week of the month to determine if it was an "eligible" week.
-                const weeklyEligibility = weeksOfMonth.map(weekStart => {
-                    // This is the counter for "Work From Office" days in a single week.
+                const weeklyEligibility = weeksForReport.map(weekStart => {
                     let wfoCount = 0;
-
-                    // --- ELIGIBILITY LOGIC ---
-                    // Loop through the 5 working days of the week (Monday to Friday).
-                    // i=0 is Monday, i=1 is Tuesday, ..., i=4 is Friday. This ignores Saturday and Sunday.
-                    for (let i = 0; i < 5; i++) {
+                    for (let i = 0; i < 5; i++) { // Monday to Friday
                         const day = new Date(weekStart);
                         day.setDate(weekStart.getDate() + i);
                         const dayStr = formatDate(day);
-
-                        // Check the stored data for the current day.
-                        // If the status for the employee on this day is 'WFO'...
                         if (allMonthlyData[dayStr] && allMonthlyData[dayStr][name] === 'WFO') {
-                            // ...increment the counter.
                             wfoCount++;
                         }
                     }
-
-                    // After checking all 5 days, see if the employee met the criteria.
-                    // The requirement is to be in the office for at least 4 days.
                     if (wfoCount >= 4) {
-                        totalEligibleWeeks++; // Increment the total eligible weeks for the month.
-                        return '✓'; // Mark this week as eligible (check mark).
+                        totalEligibleWeeks++;
+                        return '✓';
                     }
-                    
-                    // If the count is less than 4, the week is not eligible.
-                    return '✗'; // Mark this week as not eligible (cross mark).
+                    return '✗';
                 });
-
-                // Store the results for the employee.
                 eligibilityData[name] = { weeklyEligibility, totalEligibleWeeks };
             });
 
@@ -391,12 +400,13 @@
             });
         }
 
+
         async function fetchIndividualMonthlyData(employeeName, allMonthlyData, dateStr) {
             const selectedDate = new Date(dateStr + 'T00:00:00');
             const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
 
             const statusByDay = {};
-            const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0 };
+            const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0, Holiday: 0 };
 
             for(const dateKey in allMonthlyData) {
                 const statuses = allMonthlyData[dateKey];
@@ -429,12 +439,13 @@
             monthlySummaryContainer.innerHTML = `
                 <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-indigo-500"></span>WFO: <strong class="ml-1">${monthlyCounts.WFO}</strong></div>
                 <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-sky-500"></span>WFH: <strong class="ml-1">${monthlyCounts.WFH}</strong></div>
-                <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-orange-400"></span>Leave: <strong class="ml-1">${monthlyCounts.Leave}</strong></div>`;
+                <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-orange-400"></span>Leave: <strong class="ml-1">${monthlyCounts.Leave}</strong></div>
+                <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-slate-400"></span>Holiday: <strong class="ml-1">${monthlyCounts.Holiday || 0}</strong></div>`;
 
             calendarGridBody.innerHTML = '';
             for (let i = 0; i < firstDayOfMonth; i++) calendarGridBody.insertAdjacentHTML('beforeend', '<div></div>');
             
-            const colorClasses = { WFO: 'bg-indigo-500 text-white', WFH: 'bg-sky-500 text-white', Leave: 'bg-orange-400 text-white', NoData: 'bg-slate-100 text-slate-400' };
+            const colorClasses = { WFO: 'bg-indigo-500 text-white', WFH: 'bg-sky-500 text-white', Leave: 'bg-orange-400 text-white', Holiday: 'bg-slate-400 text-white', NoData: 'bg-slate-100 text-slate-400' };
             for (let day = 1; day <= daysInMonth; day++) {
                 const status = statusByDay[day] || 'NoData';
                 const cellClass = colorClasses[status];
@@ -575,3 +586,4 @@
     </script>
 </body>
 </html>
+
