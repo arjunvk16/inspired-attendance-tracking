@@ -159,37 +159,32 @@
         // --- Auth State Logic ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // If user is authenticated via Firebase Auth, show the app
                 loginContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
 
-                // Now, try to get the role for UI permissions. This will not block login.
                 try {
                     const userDocRef = doc(db, 'users', user.uid);
                     const userDocSnap = await getDoc(userDocRef);
                     if (userDocSnap.exists() && userDocSnap.data().role) {
                         currentUserRole = userDocSnap.data().role;
                     } else {
-                        // If no role is found in Firestore, default to 'editor'.
                         console.warn("User role not found in Firestore. Defaulting to 'editor'.");
                         currentUserRole = 'editor';
                     }
                 } catch (error) {
                     console.error("Error fetching user role, defaulting to 'editor':", error);
-                    currentUserRole = 'editor'; // Also default to editor on error
+                    currentUserRole = 'editor';
                 }
                 
                 roleDisplay.textContent = currentUserRole;
                 updateUiForRole(currentUserRole);
 
-                // Initialize the main app logic if it's the first time
                 if (!isAppInitialized) {
                     initializeAppLogic();
                     isAppInitialized = true;
                 }
 
             } else {
-                // User is signed out, show the login page
                 appContainer.classList.add('hidden');
                 loginContainer.classList.remove('hidden');
                 isAppInitialized = false;
@@ -206,7 +201,6 @@
             } else {
                 saveButton.classList.remove('hidden');
             }
-            // This ensures select menus are enabled/disabled correctly after re-renders
             document.querySelectorAll('.status-select').forEach(select => select.disabled = isViewer);
         }
 
@@ -433,7 +427,10 @@
 
             individualCalendarContainer.classList.remove('hidden');
             const { statusByDay, monthlyCounts, startDate } = processIndividualMonthlyData(employeeName, allMonthlyData, dateStr);
-            const daysInMonth = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0).getUTCDate();
+            
+            // BUG FIX: Use Date.UTC to prevent timezone issues when calculating days in month.
+            const daysInMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0)).getUTCDate();
+            
             const firstDayOfMonth = startDate.getUTCDay();
 
             monthlySummaryContainer.innerHTML = `
@@ -522,7 +519,10 @@
                     monthName = startDate.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
                     year = startDate.getUTCFullYear();
                 }
-                const daysInMonth = new Date(year, startDate.getUTCMonth() + 1, 0).getUTCDate();
+
+                // BUG FIX: Use Date.UTC to prevent timezone issues when calculating days in month for excel export.
+                const daysInMonth = new Date(Date.UTC(year, startDate.getUTCMonth() + 1, 0)).getUTCDate();
+                
                 const excelData = [['Date', 'Day', 'Status']];
                 for (let day = 1; day <= daysInMonth; day++) {
                     const currentDate = new Date(Date.UTC(year, startDate.getUTCMonth(), day));
