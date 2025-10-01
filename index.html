@@ -8,43 +8,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Simple spinner for loading states */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            animation: spin 1s linear infinite;
-        }
-        .btn-loader {
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            border-top: 2px solid #ffffff;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 32px; height: 32px; animation: spin 1s linear infinite; }
+        .btn-loader { border: 2px solid rgba(255, 255, 255, 0.5); border-top: 2px solid #ffffff; border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Login Container -->
-    <div id="login-container" class="w-full max-w-md hidden">
+    <div id="login-container" class="w-full max-w-md">
         <div class="bg-white rounded-xl shadow-lg p-8">
-            <h2 class="text-2xl font-bold text-center text-slate-800 mb-2">Admin Login</h2>
+            <h2 class="text-2xl font-bold text-center text-slate-800 mb-2">Admin Portal Login</h2>
             <p class="text-center text-slate-500 mb-6">Please sign in to continue.</p>
             <form id="login-form">
                 <div class="mb-4">
                     <label for="username" class="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                    <input type="email" id="username" name="username" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5" placeholder="Enter your email" required>
+                    <input type="email" id="username" name="username" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5" placeholder="ai.ops.admin@inseinc.com" required>
                 </div>
                 <div class="mb-6">
                     <label for="password" class="block text-sm font-medium text-slate-700 mb-2">Password</label>
@@ -58,94 +37,76 @@
         </div>
     </div>
 
-    <!-- Main App Container (Initially Hidden) -->
     <div id="app-container" class="w-full max-w-7xl bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
         <header class="relative text-center mb-6">
             <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Team Status Tracker</h1>
-            <p class="text-slate-500 mt-1">Select a date to view or update the team's status.</p>
-            <button id="logout-button" class="absolute top-0 right-0 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            <p id="role-display" class="text-slate-500 mt-1">Role: <span class="font-semibold"></span></p>
+            <button id="logout-button" class="absolute top-0 right-0 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700">
                 Logout
             </button>
         </header>
 
-        <!-- Date Selector -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
             <label for="date-picker" class="font-semibold text-slate-700">Select Date:</label>
             <input type="date" id="date-picker" class="w-full flex-grow bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5">
         </div>
-
-        <!-- Daily Status Editor -->
         <h2 id="editor-heading" class="text-lg font-semibold text-slate-700 mb-3 hidden">Update Status for Selected Day</h2>
-        <div id="employee-list-container" class="space-y-3">
-            <!-- Loader will be shown here initially -->
-        </div>
-
-        <!-- Action Button and Status Message -->
+        <div id="employee-list-container" class="space-y-3"></div>
         <div class="my-8 text-center">
             <button id="save-button" class="w-full sm:w-auto inline-flex justify-center items-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 transition-colors">
                 <span id="btn-text">Save Changes</span>
-                <span id="btn-loader" class="hidden">
-                    <div class="btn-loader"></div>
-                </span>
+                <span id="btn-loader" class="hidden"><div class="btn-loader"></div></span>
             </button>
             <p id="status-message" class="mt-4 text-sm font-medium h-5"></p>
         </div>
-
-        <!-- Divider -->
         <hr class="my-8">
-        
-        <!-- Individual Monthly Report -->
         <div id="individual-report-container" class="my-8 hidden">
              <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
-                <h2 class="text-lg font-semibold text-slate-700">Monthly Report</h2>
-                <div class="flex items-center gap-4">
-                    <button id="download-excel-button" class="inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                        <span id="download-btn-text">Download Team Report</span>
-                        <span id="download-btn-loader" class="hidden"><div class="btn-loader"></div></span>
-                    </button>
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
+                 <h2 class="text-lg font-semibold text-slate-700">Monthly Report</h2>
+                 <div class="flex items-center gap-4">
+                     <button id="download-excel-button" class="inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                         <span id="download-btn-text">Download Report</span>
+                         <span id="download-btn-loader" class="hidden"><div class="btn-loader"></div></span>
+                     </button>
+                 </div>
+             </div>
+             <div class="flex items-center gap-4">
                  <label for="employee-select" class="font-medium text-sm text-slate-600">View Individual Calendar:</label>
                  <select id="employee-select" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
-            </div>
-            <div id="individual-calendar-container" class="hidden mt-4">
-                <div id="individual-monthly-summary" class="flex flex-wrap gap-x-6 gap-y-2 mb-4 text-sm"></div>
-                <div id="calendar-grid-header" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 mb-1">
-                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                </div>
-                <div id="calendar-grid-body" class="grid grid-cols-7 gap-1">
-                    <!-- Calendar cells are dynamically generated -->
-                </div>
-            </div>
+             </div>
+             <div id="individual-calendar-container" class="hidden mt-4">
+                 <div id="individual-monthly-summary" class="flex flex-wrap gap-x-6 gap-y-2 mb-4 text-sm"></div>
+                 <div id="calendar-grid-header" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 mb-1">
+                     <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                 </div>
+                 <div id="calendar-grid-body" class="grid grid-cols-7 gap-1"></div>
+             </div>
         </div>
-
-        <!-- Monthly Eligibility Report -->
         <div id="eligibility-report-container" class="my-8 hidden">
-            <h2 class="text-lg font-semibold text-slate-700 mb-3">Monthly Eligibility Summary</h2>
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-3">
+                <h2 class="text-lg font-semibold text-slate-700">Monthly Eligibility Summary</h2>
+                <div class="flex items-center gap-2">
+                    <label for="month-picker" class="font-medium text-sm text-slate-600">Select Month:</label>
+                    <select id="month-picker" class="bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
+                </div>
+            </div>
             <div class="border rounded-lg overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200">
                     <thead class="bg-slate-50">
-                        <tr id="eligibility-header">
-                            <!-- Header generated dynamically -->
-                        </tr>
+                        <tr id="eligibility-header"></tr>
                     </thead>
-                    <tbody id="eligibility-body" class="bg-white divide-y divide-slate-200">
-                        <!-- Body generated dynamically -->
-                    </tbody>
+                    <tbody id="eligibility-body" class="bg-white divide-y divide-slate-200"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, setLogLevel, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, documentId } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // --- Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyAJ9K9fQ0ThMB7aXB6qNHr3_yLUdqJgnCM",
             authDomain: "my-chain-reaction-game.firebaseapp.com",
@@ -155,13 +116,13 @@
             appId: "1:32751418407:web:ff8244007ef2b099d56202",
             measurementId: "G-D6ZRG8LK2H"
         };
-
-        const employees = [
-            "Akhil", "Arjun", "Arjun V K", "Chanthuraj", "Dayanitta",
-            "Eby", "Rishil", "Shehmil", "Sumesh"
-        ];
         
-        // --- DOM Elements ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        const employees = ["Akhil", "Arjun", "Arjun V K", "Chanthuraj", "Dayanitta", "Eby", "Rishil", "Shehmil", "Sumesh"];
+        
         const loginContainer = document.getElementById('login-container');
         const appContainer = document.getElementById('app-container');
         const loginForm = document.getElementById('login-form');
@@ -169,8 +130,8 @@
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const logoutButton = document.getElementById('logout-button');
-
         const datePicker = document.getElementById('date-picker');
+        const monthPicker = document.getElementById('month-picker');
         const employeeListContainer = document.getElementById('employee-list-container');
         const editorHeading = document.getElementById('editor-heading');
         const saveButton = document.getElementById('save-button');
@@ -188,46 +149,74 @@
         const eligibilityReportContainer = document.getElementById('eligibility-report-container');
         const eligibilityHeader = document.getElementById('eligibility-header');
         const eligibilityBody = document.getElementById('eligibility-body');
+        const roleDisplay = document.querySelector('#role-display span');
 
-        let db;
-        let auth;
         let unsubscribeDaily;
         let isAppInitialized = false;
-
-        // --- Main App Initialization ---
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-        setLogLevel('debug');
-
+        let monthlyDataCache = {};
+        let currentUserRole = null;
+        
         // --- Auth State Logic ---
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // User is signed in
+                // If user is authenticated via Firebase Auth, show the app
                 loginContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
+
+                // Now, try to get the role for UI permissions. This will not block login.
+                try {
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (userDocSnap.exists() && userDocSnap.data().role) {
+                        currentUserRole = userDocSnap.data().role;
+                    } else {
+                        // If no role is found in Firestore, default to 'editor'.
+                        console.warn("User role not found in Firestore. Defaulting to 'editor'.");
+                        currentUserRole = 'editor';
+                    }
+                } catch (error) {
+                    console.error("Error fetching user role, defaulting to 'editor':", error);
+                    currentUserRole = 'editor'; // Also default to editor on error
+                }
+                
+                roleDisplay.textContent = currentUserRole;
+                updateUiForRole(currentUserRole);
+
+                // Initialize the main app logic if it's the first time
                 if (!isAppInitialized) {
                     initializeAppLogic();
                     isAppInitialized = true;
                 }
+
             } else {
-                // User is signed out
+                // User is signed out, show the login page
                 appContainer.classList.add('hidden');
                 loginContainer.classList.remove('hidden');
-                isAppInitialized = false; // Reset for next login
+                isAppInitialized = false;
+                currentUserRole = null;
+                loginError.textContent = "";
             }
         });
 
-        // --- Login/Logout Logic ---
+        function updateUiForRole(role) {
+            const isViewer = role === 'viewer';
+            saveButton.disabled = isViewer;
+            if (isViewer) {
+                saveButton.classList.add('hidden');
+            } else {
+                saveButton.classList.remove('hidden');
+            }
+            // This ensures select menus are enabled/disabled correctly after re-renders
+            document.querySelectorAll('.status-select').forEach(select => select.disabled = isViewer);
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const email = usernameInput.value;
             const password = passwordInput.value;
             loginError.textContent = '';
-            
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged will handle UI changes
             } catch (error) {
                 console.error("Login Error:", error.code, error.message);
                 loginError.textContent = 'Invalid email or password.';
@@ -237,17 +226,17 @@
 
         async function handleLogout() {
             try {
+                if (unsubscribeDaily) unsubscribeDaily();
                 await signOut(auth);
-                // onAuthStateChanged will handle UI changes
             } catch (error) {
                 console.error("Logout Error:", error);
             }
         }
-        
-        // --- Core Application Logic (runs after login) ---
+
         async function initializeAppLogic() {
             try {
                 populateEmployeeDropdown();
+                populateMonthPicker();
                 setupInitialDate();
                 await handleDateChange(datePicker.value);
             } catch (error) {
@@ -255,11 +244,47 @@
                 showError("Could not load application data.");
             }
         }
-
+        
         const formatDate = (date) => date.toISOString().split('T')[0];
         
+        function parseUTCDate(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(p => parseInt(p, 10));
+            return new Date(Date.UTC(year, month - 1, day));
+        }
+
+        function getWeekStartDate(date) {
+            const newDate = new Date(date.getTime());
+            const day = newDate.getUTCDay();
+            const diff = newDate.getUTCDate() - day + (day === 0 ? -6 : 1);
+            return new Date(newDate.setUTCDate(diff));
+        }
+
+        function getWeekOfYear(date) {
+            const target = new Date(date.valueOf());
+            const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+            const jan1WeekStart = getWeekStartDate(yearStart);
+            const targetWeekStart = getWeekStartDate(target);
+            const diff = targetWeekStart - jan1WeekStart;
+            return Math.round(diff / (1000 * 60 * 60 * 24 * 7)) + 1;
+        }
+
+        function getWeeksForMonth(year, month) {
+            const weeks = new Set();
+            const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const currentDate = new Date(Date.UTC(year, month, i));
+                weeks.add(formatDate(getWeekStartDate(currentDate)));
+            }
+            const weeksOfMonth = Array.from(weeks).filter(weekStartDateStr => {
+                const weekStartDate = parseUTCDate(weekStartDateStr);
+                const wednesday = new Date(weekStartDate);
+                wednesday.setUTCDate(wednesday.getUTCDate() + 2);
+                return wednesday.getUTCMonth() === month;
+            });
+            return weeksOfMonth.sort().map(dateStr => parseUTCDate(dateStr));
+        }
+        
         function populateEmployeeDropdown() {
-            // Clear existing options before populating
             employeeSelect.innerHTML = '';
             employees.forEach(name => {
                 const option = document.createElement('option');
@@ -269,25 +294,22 @@
             });
         }
 
-        function setupInitialDate() {
-            datePicker.value = formatDate(new Date());
-        }
-        
-        function getWeekStartDate(date) {
-            const newDate = new Date(date);
-            const day = newDate.getDay();
-            // Adjust to Monday as the start of the week
-            const diff = newDate.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(newDate.setDate(diff));
+        function populateMonthPicker() {
+            monthPicker.innerHTML = '';
+            const today = new Date();
+            for (let i = 0; i < 12; i++) {
+                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const month = date.toLocaleString('en-US', { month: 'long' });
+                const year = date.getFullYear();
+                const option = document.createElement('option');
+                option.value = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                option.textContent = `${month} ${year}`;
+                monthPicker.appendChild(option);
+            }
         }
 
-        // Helper function to get the week number of the year
-        function getWeekOfYear(d) {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return weekNo;
+        function setupInitialDate() {
+            datePicker.value = formatDate(new Date());
         }
 
         function renderEmployeeEditor(attendanceData = {}) {
@@ -297,26 +319,32 @@
                 const employeeDiv = document.createElement('div');
                 employeeDiv.className = 'flex items-center justify-between p-3 rounded-lg bg-slate-50 border';
                 employeeDiv.innerHTML = `<span class="font-medium text-slate-800">${name}</span>
-                    <select class="status-select bg-white border border-slate-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" data-employee-name="${name}">
+                    <select class="status-select bg-white border border-slate-300 rounded-md p-2 text-sm" data-employee-name="${name}">
                         <option value="WFO" ${currentStatus === 'WFO' ? 'selected' : ''}>🏢 Work from Office</option>
                         <option value="WFH" ${currentStatus === 'WFH' ? 'selected' : ''}>🏠 Work from Home</option>
                         <option value="Leave" ${currentStatus === 'Leave' ? 'selected' : ''}>🌴 On Leave</option>
-                        <option value="Holiday" ${currentStatus === 'Holiday' ? 'selected' : ''}>🏖️ Holiday</option>
+                        <option value="Holiday" ${currentStatus === 'Holiday' ? 'selected' : ''}>🎉 Holiday</option>
                     </select>`;
                 employeeListContainer.appendChild(employeeDiv);
             });
+            if (currentUserRole) {
+                updateUiForRole(currentUserRole);
+            }
         }
         
         async function fetchAllMonthlyData(dateStr) {
-             const selectedDate = new Date(dateStr + 'T00:00:00');
-            const year = selectedDate.getFullYear();
-            const month = selectedDate.getMonth();
-            const startDate = new Date(year, month, 1);
-            const endDate = new Date(year, month + 1, 0);
-            
+            const selectedDate = parseUTCDate(dateStr);
+            const year = selectedDate.getUTCFullYear();
+            const month = selectedDate.getUTCMonth();
+            const startDate = new Date(Date.UTC(year, month, 1));
+            const endDate = new Date(Date.UTC(year, month + 1, 0));
             const monthlyData = {};
             try {
-                const q = query(collection(db, 'team_status'), where('__name__', '>=', formatDate(startDate)), where('__name__', '<=', formatDate(endDate)));
+                const q = query(
+                    collection(db, 'team_status'),
+                    where(documentId(), '>=', formatDate(startDate)),
+                    where(documentId(), '<=', formatDate(endDate))
+                );
                 const querySnapshot = await getDocs(q);
                 querySnapshot.forEach(doc => {
                     monthlyData[doc.id] = doc.data().statuses;
@@ -328,55 +356,36 @@
             }
         }
 
-        async function renderMonthlyEligibilityReport(dateStr, allMonthlyData) {
-            const selectedDate = new Date(dateStr + 'T00:00:00');
-            const year = selectedDate.getFullYear();
-            const month = selectedDate.getMonth();
-
-            const firstDayOfMonth = new Date(year, month, 1);
-            const lastDayOfMonth = new Date(year, month + 1, 0);
-
-            const startMonday = getWeekStartDate(firstDayOfMonth);
-            const endMonday = getWeekStartDate(lastDayOfMonth);
-            
-            const weeksForReport = [];
-            let currentMonday = new Date(startMonday);
-            while (currentMonday <= endMonday) {
-                weeksForReport.push(new Date(currentMonday));
-                currentMonday.setDate(currentMonday.getDate() + 7);
-            }
-            
-            const formatWeekRange = (monday) => {
-                const sunday = new Date(monday);
-                sunday.setDate(monday.getDate() + 6);
-                const monthFormat = { month: 'short' };
-                const dayFormat = { day: '2-digit' };
-                const start = `${monday.toLocaleDateString('en-US', monthFormat)} ${monday.toLocaleDateString('en-US', dayFormat)}`;
-                const end = `${sunday.toLocaleDateString('en-US', monthFormat)} ${sunday.toLocaleDateString('en-US', dayFormat)}`;
-                return `${start} - ${end}`;
-            };
-
-            let headerContent = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Member</th>`;
-            weeksForReport.forEach(week => {
-                headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    W${getWeekOfYear(week)} <br> <span class="font-normal normal-case">${formatWeekRange(week)}</span>
-                </th>`;
+        function renderMonthlyEligibilityReport(dateStr, allMonthlyData) {
+            const selectedDate = parseUTCDate(dateStr);
+            const year = selectedDate.getUTCFullYear();
+            const month = selectedDate.getUTCMonth();
+            const weeksOfMonth = getWeeksForMonth(year, month);
+            let headerContent = `<th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Member</th>`;
+            weeksOfMonth.forEach((week) => {
+                const weekStartDate = week;
+                const weekEndDate = new Date(weekStartDate);
+                weekEndDate.setUTCDate(weekStartDate.getUTCDate() + 4);
+                const formatDateHeader = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                let weekLabel = (weekStartDate.getUTCMonth() === weekEndDate.getUTCMonth())
+                    ? `(${weekStartDate.getUTCDate()} - ${weekEndDate.getUTCDate()})`
+                    : `(${formatDateHeader(weekStartDate)} - ${formatDateHeader(weekEndDate)})`;
+                const weekNumber = getWeekOfYear(weekStartDate);
+                headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Week ${weekNumber} <br> ${weekLabel}</th>`;
             });
-            headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Total Eligible Weeks</th>`;
-            eligibilityHeader.innerHTML = headerContent;
+            headerContent += `<th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Total Eligible Weeks</th>`;
+            eligibilityHeader.innerHTML = `<tr>${headerContent}</tr>`;
 
             const eligibilityData = {};
             employees.forEach(name => {
                 let totalEligibleWeeks = 0;
-                const weeklyEligibility = weeksForReport.map(weekStart => {
+                const weeklyEligibility = weeksOfMonth.map(weekStart => {
                     let wfoCount = 0;
-                    for (let i = 0; i < 5; i++) { // Monday to Friday
+                    for (let i = 0; i < 5; i++) {
                         const day = new Date(weekStart);
-                        day.setDate(weekStart.getDate() + i);
+                        day.setUTCDate(weekStart.getUTCDate() + i);
                         const dayStr = formatDate(day);
-                        if (allMonthlyData[dayStr] && allMonthlyData[dayStr][name] === 'WFO') {
-                            wfoCount++;
-                        }
+                        if (allMonthlyData[dayStr] && allMonthlyData[dayStr][name] === 'WFO') wfoCount++;
                     }
                     if (wfoCount >= 4) {
                         totalEligibleWeeks++;
@@ -390,28 +399,25 @@
             eligibilityBody.innerHTML = '';
             employees.forEach(name => {
                 const data = eligibilityData[name];
-                let rowContent = `<td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${name}</td>`;
+                let rowContent = `<td class="px-4 py-4 text-sm font-medium text-slate-900">${name}</td>`;
                 data.weeklyEligibility.forEach(status => {
                     const textColor = status === '✓' ? 'text-green-600' : 'text-red-500';
-                    rowContent += `<td class="px-4 py-4 whitespace-nowrap text-sm text-center font-semibold ${textColor}">${status}</td>`;
+                    rowContent += `<td class="px-4 py-4 text-sm text-center font-semibold ${textColor}">${status}</td>`;
                 });
-                rowContent += `<td class="px-4 py-4 whitespace-nowrap text-sm text-center font-bold text-slate-800">${data.totalEligibleWeeks}</td>`;
+                rowContent += `<td class="px-4 py-4 text-sm text-center font-bold text-slate-800">${data.totalEligibleWeeks}</td>`;
                 eligibilityBody.innerHTML += `<tr>${rowContent}</tr>`;
             });
         }
 
-
-        async function fetchIndividualMonthlyData(employeeName, allMonthlyData, dateStr) {
-            const selectedDate = new Date(dateStr + 'T00:00:00');
-            const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-
+        function processIndividualMonthlyData(employeeName, allMonthlyData, dateStr) {
+            const selectedDate = parseUTCDate(dateStr);
+            const startDate = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
             const statusByDay = {};
             const monthlyCounts = { WFO: 0, WFH: 0, Leave: 0, Holiday: 0 };
-
             for(const dateKey in allMonthlyData) {
                 const statuses = allMonthlyData[dateKey];
                 if(statuses && statuses[employeeName]) {
-                    const dayOfMonth = new Date(dateKey + 'T00:00:00').getDate();
+                    const dayOfMonth = parseUTCDate(dateKey).getUTCDate();
                     const status = statuses[employeeName];
                     statusByDay[dayOfMonth] = status;
                     if(monthlyCounts[status] !== undefined) monthlyCounts[status]++;
@@ -420,32 +426,26 @@
             return { statusByDay, monthlyCounts, startDate };
         }
 
-        async function renderIndividualMonthlyReport(allMonthlyData) {
+        function renderIndividualMonthlyReport(allMonthlyData) {
             const employeeName = employeeSelect.value;
             const dateStr = datePicker.value;
             if (!employeeName || !dateStr) return;
 
             individualCalendarContainer.classList.remove('hidden');
-            const monthlyData = await fetchIndividualMonthlyData(employeeName, allMonthlyData, dateStr);
-            if (!monthlyData) {
-                 calendarGridBody.innerHTML = '<p class="text-red-500 col-span-7">Could not load calendar data.</p>';
-                 return;
-            }
-
-            const { statusByDay, monthlyCounts, startDate } = monthlyData;
-            const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-            const firstDayOfMonth = startDate.getDay();
+            const { statusByDay, monthlyCounts, startDate } = processIndividualMonthlyData(employeeName, allMonthlyData, dateStr);
+            const daysInMonth = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0).getUTCDate();
+            const firstDayOfMonth = startDate.getUTCDay();
 
             monthlySummaryContainer.innerHTML = `
                 <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-indigo-500"></span>WFO: <strong class="ml-1">${monthlyCounts.WFO}</strong></div>
                 <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-sky-500"></span>WFH: <strong class="ml-1">${monthlyCounts.WFH}</strong></div>
                 <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-orange-400"></span>Leave: <strong class="ml-1">${monthlyCounts.Leave}</strong></div>
-                <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-slate-400"></span>Holiday: <strong class="ml-1">${monthlyCounts.Holiday || 0}</strong></div>`;
+                <div class="flex items-center"><span class="h-3 w-3 mr-2 rounded-full bg-yellow-400"></span>Holiday: <strong class="ml-1">${monthlyCounts.Holiday}</strong></div>
+            `;
 
             calendarGridBody.innerHTML = '';
             for (let i = 0; i < firstDayOfMonth; i++) calendarGridBody.insertAdjacentHTML('beforeend', '<div></div>');
-            
-            const colorClasses = { WFO: 'bg-indigo-500 text-white', WFH: 'bg-sky-500 text-white', Leave: 'bg-orange-400 text-white', Holiday: 'bg-slate-400 text-white', NoData: 'bg-slate-100 text-slate-400' };
+            const colorClasses = { WFO: 'bg-indigo-500 text-white', WFH: 'bg-sky-500 text-white', Leave: 'bg-orange-400 text-white', Holiday: 'bg-yellow-400 text-white', NoData: 'bg-slate-100 text-slate-400' };
             for (let day = 1; day <= daysInMonth; day++) {
                 const status = statusByDay[day] || 'NoData';
                 const cellClass = colorClasses[status];
@@ -453,66 +453,34 @@
             }
         }
         
-        async function downloadTeamMonthlyReportAsExcel() {
-            setDownloadButtonLoading(true);
-            const dateStr = datePicker.value;
-            const workbook = XLSX.utils.book_new();
-
-            const allMonthlyData = await fetchAllMonthlyData(dateStr);
-
-            const allEmployeeDataPromises = employees.map(name => fetchIndividualMonthlyData(name, allMonthlyData, dateStr));
-            const allEmployeeData = await Promise.all(allEmployeeDataPromises);
-
-            let monthName, year;
-
-            allEmployeeData.forEach((monthlyData, index) => {
-                if (!monthlyData) return;
-                
-                const employeeName = employees[index];
-                const { statusByDay, startDate } = monthlyData;
-                const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-                
-                if(!monthName) {
-                    monthName = startDate.toLocaleDateString('en-US', { month: 'long' });
-                    year = startDate.getFullYear();
-                }
-
-                const excelData = [['Date', 'Day', 'Status']];
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const currentDate = new Date(year, startDate.getMonth(), day);
-                    const dateString = currentDate.toISOString().split('T')[0];
-                    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-                    const status = statusByDay[day] || 'No Data';
-                    excelData.push([dateString, dayName, status]);
-                }
-                const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, employeeName);
-            });
-
-            XLSX.writeFile(workbook, `Team_Monthly_Report_${monthName}_${year}.xlsx`);
-            setDownloadButtonLoading(false);
-        }
-
-        async function listenForDailyData(dateStr) {
+        function listenForDailyData(dateStr) {
             if (unsubscribeDaily) unsubscribeDaily();
             const docRef = doc(db, 'team_status', dateStr);
             unsubscribeDaily = onSnapshot(docRef, (docSnap) => {
                 renderEmployeeEditor(docSnap.exists() ? docSnap.data().statuses : {});
                 hideLoadingState();
+            }, (error) => {
+                console.error("Snapshot listener error:", error);
+                showError("Error listening for real-time updates.");
             });
         }
         
         async function handleDateChange(dateStr) {
             if (!db || !dateStr) return;
             showLoadingState();
-            
-            const allMonthlyData = await fetchAllMonthlyData(dateStr);
-            
-            await Promise.all([
-                listenForDailyData(dateStr),
-                renderIndividualMonthlyReport(allMonthlyData),
-                renderMonthlyEligibilityReport(dateStr, allMonthlyData)
-            ]);
+            try {
+                monthlyDataCache = await fetchAllMonthlyData(dateStr);
+                listenForDailyData(dateStr);
+                renderIndividualMonthlyReport(monthlyDataCache);
+                renderMonthlyEligibilityReport(dateStr, monthlyDataCache);
+                const selectedDate = parseUTCDate(dateStr);
+                const year = selectedDate.getUTCFullYear();
+                const month = selectedDate.getUTCMonth() + 1;
+                monthPicker.value = `${year}-${String(month).padStart(2, '0')}`;
+            } catch (error) {
+                console.error("Error on date change:", error);
+                showError("Failed to load data for the selected date.");
+            }
         }
 
         async function saveData() {
@@ -525,15 +493,49 @@
             });
             try {
                 await setDoc(doc(db, 'team_status', selectedDate), { statuses });
+                monthlyDataCache[selectedDate] = statuses;
                 showSuccess("Changes saved successfully!");
-                const allMonthlyData = await fetchAllMonthlyData(selectedDate);
-                await renderIndividualMonthlyReport(allMonthlyData);
-                await renderMonthlyEligibilityReport(selectedDate, allMonthlyData);
+                renderIndividualMonthlyReport(monthlyDataCache);
+                renderMonthlyEligibilityReport(selectedDate, monthlyDataCache);
             } catch (error) {
+                console.error("Save Error:", error);
                 showError("Failed to save changes.");
             } finally {
                 setButtonLoading(false);
             }
+        }
+        
+        async function downloadTeamMonthlyReportAsExcel() {
+            setDownloadButtonLoading(true);
+            const dateStr = datePicker.value;
+            const workbook = XLSX.utils.book_new();
+            const allMonthlyData = monthlyDataCache;
+            if(Object.keys(allMonthlyData).length === 0) {
+                alert("No data available to download.");
+                setDownloadButtonLoading(false);
+                return;
+            }
+            let monthName, year;
+            employees.forEach(employeeName => {
+                const { statusByDay, startDate } = processIndividualMonthlyData(employeeName, allMonthlyData, dateStr);
+                if (!monthName) {
+                    monthName = startDate.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+                    year = startDate.getUTCFullYear();
+                }
+                const daysInMonth = new Date(year, startDate.getUTCMonth() + 1, 0).getUTCDate();
+                const excelData = [['Date', 'Day', 'Status']];
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const currentDate = new Date(Date.UTC(year, startDate.getUTCMonth(), day));
+                    const dateString = formatDate(currentDate);
+                    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+                    const status = statusByDay[day] || 'No Data';
+                    excelData.push([dateString, dayName, status]);
+                }
+                const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, employeeName);
+            });
+            XLSX.writeFile(workbook, `Team_Report_${monthName}_${year}.xlsx`);
+            setDownloadButtonLoading(false);
         }
 
         function showLoadingState() {
@@ -544,7 +546,7 @@
 
         function hideLoadingState() {
             [editorHeading, individualReportContainer, eligibilityReportContainer].forEach(el => el.classList.remove('hidden'));
-            saveButton.disabled = false;
+            saveButton.disabled = currentUserRole === 'viewer';
         }
 
         function setButtonLoading(isLoading) {
@@ -567,23 +569,23 @@
 
         function showError(message) {
             employeeListContainer.innerHTML = `<div class="text-center p-4 text-red-600 bg-red-100 rounded-lg">${message}</div>`;
-            [editorHeading, individualReportContainer, eligibilityReportContainer].forEach(el => el.classList.add('hidden'));
             statusMessage.textContent = message;
             statusMessage.className = "mt-4 text-sm font-medium h-5 text-red-600";
+            setTimeout(() => { statusMessage.textContent = ''; }, 5000);
         }
-
-        // --- Event Listeners ---
+        
         loginForm.addEventListener('submit', handleLogin);
         logoutButton.addEventListener('click', handleLogout);
         datePicker.addEventListener('change', () => handleDateChange(datePicker.value));
-        employeeSelect.addEventListener('change', async () => {
-             const allMonthlyData = await fetchAllMonthlyData(datePicker.value);
-             renderIndividualMonthlyReport(allMonthlyData);
+        monthPicker.addEventListener('change', (e) => {
+            const newDateStr = e.target.value + '-01';
+            datePicker.value = newDateStr;
+            handleDateChange(newDateStr);
         });
+        employeeSelect.addEventListener('change', () => renderIndividualMonthlyReport(monthlyDataCache));
         downloadExcelButton.addEventListener('click', downloadTeamMonthlyReportAsExcel);
         saveButton.addEventListener('click', saveData);
 
     </script>
 </body>
 </html>
-
